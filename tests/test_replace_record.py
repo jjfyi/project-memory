@@ -11,7 +11,7 @@ from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 HELPER_PATH = PACKAGE_ROOT / "scripts" / "replace_record.py"
-SPEC = importlib.util.spec_from_file_location("hub_memory_replace_record", HELPER_PATH)
+SPEC = importlib.util.spec_from_file_location("project_memory_replace_record", HELPER_PATH)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError("cannot load replacement helper")
 replace_record = importlib.util.module_from_spec(SPEC)
@@ -22,7 +22,7 @@ class ReplaceRecordTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.owner = Path(self.temporary.name) / "hub"
-        self.memory = self.owner / ".ai-hub" / "memory"
+        self.memory = self.owner / ".project-memory"
         self.memory.mkdir(parents=True)
         self.target = self.memory / "CONTEXT.md"
         self.original = b"---\nupdated: 2026-01-01\n---\n\nold\n"
@@ -47,7 +47,7 @@ class ReplaceRecordTests(unittest.TestCase):
         return replace_record.replace_record(**arguments)
 
     def remnants(self) -> list[Path]:
-        return list(self.memory.glob(".*.hub-memory-replace-*.tmp"))
+        return list(self.memory.glob(".*.project-memory-replace-*.tmp"))
 
     def test_successful_byte_exact_replacement(self) -> None:
         proposed = "raw Ω bytes\r\nnext\n".encode("utf-8")

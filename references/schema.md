@@ -1,12 +1,12 @@
 # Memory schema
 
-This file is the normative record schema for a version 1 `hub-memory` namespace.
+This file is the normative record schema for a version 1 `project-memory` namespace.
 
 ## Config, namespace, and record versions
 
-Config schema and record schema are independent exact strings. Config schema 1.0 selects the implicit `hub` namespace; config schema 1.1 selects the same namespace explicitly with `namespace = "hub"`. Namespace identity exists only in config.
+Config schema and record schema are independent exact strings. Config schema 1.0 selects the implicit `hub` namespace; config schema 1.1 selects the same namespace explicitly with `namespace = "hub"`. Namespace identity exists in PROJECT.md under config 1.2; legacy identity exists only in config.
 
-Every required record, optional `TASTE.md`, handoff packet, and annual archive remains record schema 1.0 and contains no namespace field. A supported config 1.0 or 1.1 namespace may create and update these schema-1.0 resources. Unsupported or mixed record schemas stop before writes.
+Every required record, optional `TASTE.md`, handoff packet, and annual archive remains record schema 1.0 and contains no namespace field. A supported config 1.0, 1.1, or 1.2 namespace may create and update these schema-1.0 resources. Unsupported or mixed record schemas stop before writes.
 
 ## Required namespace
 
@@ -36,7 +36,7 @@ The filenames are fixed in version 1.
 An interrupted existing-record replacement may leave a same-directory sibling named:
 
 ```text
-.<target-filename>.hub-memory-replace-<32-lowercase-hex>.tmp
+.<target-filename>.project-memory-replace-<32-lowercase-hex>.tmp
 ```
 
 This reserved pattern is a recognized non-record artifact. A remnant is inactive, is never loaded as memory, and is not a competing system. `init` and `maintain` report it as an interrupted write. If it might contain uncommitted state, stop and require content comparison plus explicit approval before recovery or removal; never silently ignore or delete it. Approved removal of a confirmed remnant is interrupted-write cleanup, not deletion of durable memory.
@@ -47,7 +47,7 @@ Every required record begins with:
 
 ```yaml
 ---
-type: hub-memory-<record-type>
+type: project-memory-<record-type>
 schema_version: "1.0"
 updated: YYYY-MM-DD
 ---
@@ -112,7 +112,7 @@ Remove `_None._` when adding the first entry and restore it when an approved mov
 
 ## `CONTEXT.md`
 
-Frontmatter type: `hub-memory-context`.
+Frontmatter type: `project-memory-context`.
 
 Required headings:
 
@@ -133,7 +133,7 @@ Each open thread states its next action and resolution or transfer condition. Co
 
 ## `DIRECTION.md`
 
-Frontmatter type: `hub-memory-direction`; counters: `next_goal_id`, `next_focus_id`.
+Frontmatter type: `project-memory-direction`; counters: `next_goal_id`, `next_focus_id`.
 
 Required headings:
 
@@ -169,7 +169,7 @@ A bounded initiative is a goal with phases, not a separate record type. Ordinary
 
 ## `OUTCOMES.md`
 
-Frontmatter type: `hub-memory-outcomes`; counter: `next_id`; required heading: `## Outcomes`.
+Frontmatter type: `project-memory-outcomes`; counter: `next_id`; required heading: `## Outcomes`.
 
 ```markdown
 ### OUT-0001 — <result>
@@ -189,7 +189,7 @@ A roll-up child points forward with `Rolls up`; its milestone points back with `
 
 ## `DECISIONS.md`
 
-Frontmatter type: `hub-memory-decisions`; counter: `next_id`; required heading: `## Decisions`.
+Frontmatter type: `project-memory-decisions`; counter: `next_id`; required heading: `## Decisions`.
 
 ```markdown
 ### DEC-0001 — <decision title>
@@ -208,7 +208,7 @@ Preserve the accepted choice and useful rationale, not the proposal transcript. 
 
 ## `GUIDANCE.md`
 
-Frontmatter type: `hub-memory-guidance`; counter: `next_id`; required heading: `## Guidance`.
+Frontmatter type: `project-memory-guidance`; counter: `next_id`; required heading: `## Guidance`.
 
 ```markdown
 ### GUIDE-0001 — <behavior title>
@@ -227,7 +227,7 @@ Only explicitly approved reusable behavior belongs here. Guidance must change fu
 
 ## `CANDIDATES.md`
 
-Frontmatter type: `hub-memory-candidates`; counter: `next_id`; required heading: `## Candidates`.
+Frontmatter type: `project-memory-candidates`; counter: `next_id`; required heading: `## Candidates`.
 
 ```markdown
 ### CAND-0001 — <candidate title>
@@ -249,7 +249,7 @@ A fresh candidate supported by one real correction, comparison, or feedback inst
 
 Created by approved maintenance after the first taste promotion.
 
-Frontmatter type: `hub-memory-taste`; common metadata plus `next_id`; required heading: `## Taste`.
+Frontmatter type: `project-memory-taste`; common metadata plus `next_id`; required heading: `## Taste`.
 
 ```markdown
 ### TASTE-0001 — <example title>
@@ -279,7 +279,7 @@ Frontmatter:
 
 ```yaml
 ---
-type: hub-memory-handoff
+type: project-memory-handoff
 schema_version: "1.0"
 created: <timezone-aware timestamp>
 objective: <continuation objective>
@@ -372,7 +372,7 @@ Frontmatter:
 
 ```yaml
 ---
-type: hub-memory-archive
+type: project-memory-archive
 schema_version: "1.0"
 year: YYYY
 updated: YYYY-MM-DD
@@ -435,4 +435,4 @@ A helper refusal or nonzero result may not be bypassed manually. If Python is un
 
 ## Future portability boundary
 
-Version 1 supports exactly one hub-owned namespace. It does not implement nearest-owner precedence, upward discovery, project routing, cross-namespace roll-up, or multiple namespaces. Stable IDs are authoritative within that one namespace; qualified IDs and cross-namespace references are future work. The owner-root and replacement-helper seam must remain reusable by a future project-memory capability without introducing project-memory behavior now.
+Version 1 supports exactly one project-owned namespace. It does not implement nearest-owner precedence, upward discovery, project routing, cross-namespace roll-up, or multiple namespaces. Stable IDs are authoritative within that one namespace; qualified IDs and cross-namespace references are future work. The owner-root and replacement-helper seam must remain reusable by a future project-memory capability without introducing project-memory behavior now.

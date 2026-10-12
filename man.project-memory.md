@@ -1,16 +1,16 @@
-# hub-memory(7)
+# project-memory(7)
 
 ## Name
 
-`hub-memory` — progressive filesystem-first memory for one knowledge-worker hub.
+`project-memory` — progressive filesystem-first memory for one independent project workspace.
 
 ## Synopsis
 
 Invoke the skill in natural language:
 
 ```text
-Initialize hub memory here.
-Resume the hub context.
+Initialize project memory here.
+Resume the project context.
 Save our progress.
 Create a detailed handoff.
 Check and maintain the memory records.
@@ -19,9 +19,9 @@ Review the learning candidates.
 
 ## Description
 
-`hub-memory` keeps current continuation state short while preserving durable direction, outcomes, decisions, approved guidance, and evidence awaiting review. It records completed state changes at the useful level rather than searches, retries, draft iterations, or transcripts.
+`project-memory` keeps current continuation state short while preserving durable direction, outcomes, decisions, approved guidance, and evidence awaiting review. It records completed state changes at the useful level rather than searches, retries, draft iterations, or transcripts.
 
-The version 1 memory model manages one fixed `hub` namespace. Tasks, workstreams, projects, daily, weekly, or monthly notes or reporting, migration, and cross-namespace routing or roll-up are outside its scope.
+The version 1 memory model manages one independent project namespace. Task management, workstream orchestration, daily, weekly, or monthly notes or reporting, migration, and cross-namespace routing or roll-up are outside its scope.
 
 Operation routing is intent-based after the skill loads. Matching is case-insensitive and permits ordinary polite or temporal framing. Negated, genuinely hypothetical, explanatory, and deliberative language is handled before explicit operation names and inferred session-level intent. “Can you save our progress?” executes; “Should we save?” offers only. Saving a particular file, draft, document, image, artifact, or named path is not a memory operation.
 
@@ -29,7 +29,7 @@ Operation routing is intent-based after the skill loads. Matching is case-insens
 
 | Operation | Purpose | Typical request |
 |---|---|---|
-| `init` | Safely create config and six empty records | “Set up hub memory.” |
+| `init` | Safely create config and six empty records | “Set up project memory.” |
 | `resume` | Recover current direction and next action | “Where were we?” |
 | `save` | Preserve meaningful progress and condense working state | “Save our progress.” |
 | `handoff` | Create a detailed explicit continuation packet | “Create a handoff for a new session.” |
@@ -58,16 +58,16 @@ Optional resources appear only when needed: `TASTE.md`, `handoffs/`, and `archiv
 
 ## Configuration
 
-Active configuration is repo-local at `.agents/config/hub-memory.toml`. Ordinary operations stop if it is absent; `init` is the only bootstrap operation. See [references/config.md](references/config.md) for the field catalog and copy-ready example.
+Active configuration is repo-local at `.project-memory/project-memory.toml`. Ordinary operations stop if it is absent; `init` is the only bootstrap operation. See [references/config.md](references/config.md) for the field catalog and copy-ready example.
 
-New initialization defaults to `.ai-hub/memory`. Existing valid configs may continue to name `.memory` or another contained relative path, with no automatic migration. `.ai-hub/` is a shared durable-data container for future `hub-*` capabilities; `hub-memory` owns only its `memory/` child and leaves sibling capability directories alone. Runtime state, caches, and secrets stay under `.agents/config/state/` and `.agents/config/secrets/`.
+Config and all memory records live directly in `.project-memory/`. The config is `.project-memory/project-memory.toml`; paths.memory must equal `.project-memory`. PROJECT.md stays at the project root. Old locations require explicit migration; the skill creates no runtime state, caches, or secrets.
 
-Package version 0.4.0 is independent of data-schema versions. Fresh initialization uses config schema 1.1 with the fixed `namespace = "hub"`; an existing complete config schema 1.0 remains fully read/write as implicit `hub`. Required records, optional taste, handoffs, and archives remain record schema 1.0 with no namespace field.
+Package version 0.5.1 is independent of data-schema versions. Fresh initialization uses config schema 1.2 and root PROJECT.md identity; an existing complete config schema 1.0 remains fully read/write as implicit `hub`. Required records, optional taste, handoffs, and archives remain record schema 1.0 with no namespace field.
 
 For optional automatic startup, a hub can place this recommended line in its agent instructions:
 
 ```text
-At the start of each new agent session, before substantive work, use hub-memory to resume.
+At the start of each new agent session, before substantive work, use project-memory to resume.
 ```
 
 It runs once per fresh conversation. Missing, invalid, ambiguous, or structurally drifting memory never blocks the substantive task and never causes automatic initialization or instruction-file edits.
@@ -99,7 +99,7 @@ python scripts/validate_package.py --root .
 python scripts/validate_package.py --root . --format json
 ```
 
-The package validator reports schema `hub-memory/package-validation@1` and exits 0 for a valid package, 1 for validation errors, or 2 for invalid invocation.
+The package validator reports schema `project-memory/package-validation@1` and exits 0 for a valid package, 1 for validation errors, or 2 for invalid invocation.
 
 The separate read-only live-memory validator requires Python 3.11 or newer and only the standard library:
 
@@ -108,11 +108,11 @@ python scripts/validate_memory.py --owner-root <hub-root>
 python scripts/validate_memory.py --owner-root <hub-root> --format json
 ```
 
-Use `--config <hub-root>/.agents/config/hub-memory.toml` only to name that exact owner-root config explicitly. The validator supports config schema 1.0 as implicit `hub` and config schema 1.1 as explicit `hub`, while record, handoff, and archive schema remain 1.0. It returns 0 for valid memory, 1 for stable invalid memory, 2 for invocation errors, and 3 for runtime or inconclusive checks such as concurrent change or resource exhaustion. Findings and output are bounded; validation does not write to the namespace.
+Use `--config <hub-root>/.project-memory/project-memory.toml` only to name that exact owner-root config explicitly. The validator supports config schema 1.2 through PROJECT.md, config schema 1.0 as implicit `hub` and config schema 1.1 as explicit `hub`, while record, handoff, and archive schema remain 1.0. It returns 0 for valid memory, 1 for stable invalid memory, 2 for invocation errors, and 3 for runtime or inconclusive checks such as concurrent change or resource exhaustion. Findings and output are bounded; validation does not write to the namespace.
 
-The version 1 memory model has one hub-owned namespace. Nearest-owner discovery, project routing, cross-namespace roll-up, qualified IDs, and multiple namespaces are future work.
+Each selected project owns one memory namespace. Nearest-owner discovery, project routing, cross-namespace roll-up, qualified IDs, and multiple namespaces are future work.
 
-A future project owner may independently use its own `.ai-hub/memory/`, but version 1 implements no project-owner discovery, precedence, or roll-up.
+A future project owner may independently use its own `.project-memory/`, but version 1 implements no project-owner discovery, precedence, or roll-up.
 
 ## See also
 
@@ -123,3 +123,19 @@ A future project owner may independently use its own `.ai-hub/memory/`, but vers
 - [Save](references/save.md)
 - [Handoff](references/handoff.md)
 - [Maintenance](references/maintain.md)
+
+
+## Project identity and session behavior
+
+
+
+Read identity when an explicit resume or reground starts memory use in a conversation. Keep the validated identity in conversation context; ordinary subsequent asks do not invoke memory or reread PROJECT.md. A quick unrelated prompt never invokes project-memory merely because identity or memory exists. Automatic startup is optional and requires an explicit project instruction.
+
+Every later explicit memory operation rereads identity as preflight before relying on it or writing. Switching the selected root requires loading its identity. If identity changes during a write operation, stop and reconcile. Do not persist a session-loaded marker. Legacy config 1.0/1.1 retains its fixed hub identity; if PROJECT.md exists, its namespace must be hub. Init or an explicitly approved upgrade establishes project identity under config 1.2.
+
+
+Read [project identity](references/identity.md) for the interview and record contract. Config schema 1.2 references PROJECT.md; legacy 1.0/1.1 preserves its existing semantics. Current initialization uses 1.2. Historical 0.4.0 documentation describes the earlier baseline.
+
+## License
+
+Skill source, scripts, templates, and documentation are MIT licensed. See [LICENSE](LICENSE). The JJFYI name and brand assets are excluded; all rights are reserved for those materials.

@@ -20,11 +20,11 @@ def make_hub(
     base: Path,
     *,
     config_version: str = "1.1",
-    memory_path: str = ".ai-hub/memory",
+    memory_path: str = ".project-memory",
     namespace: str | None = "hub",
 ) -> tuple[Path, Path]:
     owner = base / "hub"
-    config_dir = owner / ".agents" / "config"
+    config_dir = owner / ".project-memory"
     config_dir.mkdir(parents=True)
     write_config(
         owner,
@@ -33,7 +33,7 @@ def make_hub(
         namespace=namespace,
     )
     memory = owner / memory_path
-    memory.mkdir(parents=True)
+    memory.mkdir(parents=True, exist_ok=True)
     for name in RECORD_NAMES:
         text = (TEMPLATE_ROOT / name).read_text(encoding="utf-8")
         (memory / name).write_text(
@@ -52,11 +52,11 @@ def write_config(
     namespace: str | None,
     extra: str = "",
 ) -> Path:
-    config = owner / ".agents" / "config" / "hub-memory.toml"
+    config = owner / ".project-memory" / "project-memory.toml"
     config.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         f'schema_version = "{config_version}"',
-        'skill = "hub-memory"',
+        'skill = "project-memory"',
     ]
     if namespace is not None:
         lines.append(f'namespace = "{namespace}"')
@@ -154,7 +154,7 @@ def handoff_text(
         exact_state += f"\n- Workspace anchor: {workspace_anchor}"
     return (
         "---\n"
-        "type: hub-memory-handoff\n"
+        "type: project-memory-handoff\n"
         'schema_version: "1.0"\n'
         "created: 2026-08-31T10:00:00-07:00\n"
         f"objective: {objective}\n"
@@ -193,7 +193,7 @@ def archive_text(year: str = "2025", content: str = "") -> str:
         sections.append(f"## {heading}\n\n{body}")
     return (
         "---\n"
-        "type: hub-memory-archive\n"
+        "type: project-memory-archive\n"
         'schema_version: "1.0"\n'
         f"year: {year}\n"
         "updated: 2026-08-31\n"

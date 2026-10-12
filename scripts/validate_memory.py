@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only structural validation for one configured hub-memory namespace."""
+"""Read-only structural validation for one configured project-memory namespace."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ except ModuleNotFoundError:  # Python < 3.11
     tomllib = None  # type: ignore[assignment]
 
 EXIT_VALID, EXIT_INVALID, EXIT_INVOCATION, EXIT_INCONCLUSIVE = 0, 1, 2, 3
-SCHEMA_ID = "hub-memory/memory-validation@1"
+SCHEMA_ID = "project-memory/memory-validation@1"
 MAX_FINDINGS = 100
 MAX_DETAIL_CHARS = 1_000
 MAX_FILES = 5_000
@@ -29,18 +29,18 @@ MAX_FILE_BYTES = 8 * 1024 * 1024
 MAX_TOTAL_BYTES = 64 * 1024 * 1024
 
 REQUIRED_RECORDS = {
-    "CANDIDATES.md": ("hub-memory-candidates", ("Candidates",)),
+    "CANDIDATES.md": ("project-memory-candidates", ("Candidates",)),
     "CONTEXT.md": (
-        "hub-memory-context",
+        "project-memory-context",
         ("Current Focus", "Open Threads", "Blockers", "Next Steps", "Relevant Memory", "Active Handoff"),
     ),
-    "DECISIONS.md": ("hub-memory-decisions", ("Decisions",)),
-    "DIRECTION.md": ("hub-memory-direction", ("Goals", "Focuses")),
-    "GUIDANCE.md": ("hub-memory-guidance", ("Guidance",)),
-    "OUTCOMES.md": ("hub-memory-outcomes", ("Outcomes",)),
+    "DECISIONS.md": ("project-memory-decisions", ("Decisions",)),
+    "DIRECTION.md": ("project-memory-direction", ("Goals", "Focuses")),
+    "GUIDANCE.md": ("project-memory-guidance", ("Guidance",)),
+    "OUTCOMES.md": ("project-memory-outcomes", ("Outcomes",)),
 }
 OPTIONAL_DIRS = {"handoffs", "archive"}
-REMNANT_RE = re.compile(r"^\..+\.hub-memory-replace-[0-9a-f]{32}\.tmp$")
+REMNANT_RE = re.compile(r"^\..+\.project-memory-replace-[0-9a-f]{32}\.tmp$")
 HANDOFF_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{4}-[a-z0-9-]{1,60}\.md$")
 ARCHIVE_NAME_RE = re.compile(r"^(\d{4})\.md$")
 ID_HEADING_RE = re.compile(r"^### (GOAL|FOCUS|OUT|DEC|GUIDE|CAND|TASTE)-(\d{4,}) — (.+)$")
@@ -203,6 +203,7 @@ class MemoryValidator:
 
     def run(self) -> ValidationResult:
         config_snap = self._capture_config()
+        self.identity_raw = config_snap.data.get(self.owner / "PROJECT.md")
         raw = config_snap.data.get(self.config)
         if raw is None:
             return self._finish_recheck(config_snap)
@@ -226,14 +227,14 @@ class MemoryValidator:
     def _capture_config(self) -> Snapshot:
         relative = self.rel(self.config)
         if not self.config.exists():
-            self.add("error", "config-missing", relative, "hub-memory config is missing")
+            self.add("error", "config-missing", relative, "project-memory config is missing")
             return Snapshot({relative: ("missing", 0, "")}, {})
         if _reparse(self.config) or not self.config.is_file():
             self.add("error", "config-not-regular", relative, "config must be a regular non-reparse file")
-        for ancestor in (self.config.parent.parent, self.config.parent):
+        for ancestor in (self.config.parent,):
             if ancestor.exists() and _reparse(ancestor):
                 self.add("error", "config-ancestor-reparse", self.rel(ancestor), "config ancestor must not be a reparse point")
-        return self._capture([self.config])
+        return self._capture([self.config, self.owner / "PROJECT.md"])
 
     def _capture(self, paths: list[Path]) -> Snapshot:
         inventory: dict[str, tuple[str, int, str]] = {}
@@ -294,7 +295,7 @@ class MemoryValidator:
             self.add("error", "config-invalid", relative, f"invalid TOML: {exc}")
             return None
         version = config.get("schema_version")
-        if version not in {"1.0", "1.1"}:
+        if version not in {"1.0", "1.1", "1.2"}:
             self.add("error", "config-schema", relative, f"unsupported config schema: {version!r}")
             return None
         allowed = {"schema_version", "skill", "timezone", "paths"}
@@ -306,15 +307,15 @@ class MemoryValidator:
             self.add("error", "config-unknown-key", relative, f"unknown config keys: {', '.join(unknown)}")
         if missing:
             self.add("error", "config-missing-key", relative, f"missing config keys: {', '.join(missing)}")
-        if config.get("skill") != "hub-memory":
-            self.add("error", "config-skill", relative, "skill must equal hub-memory")
+        if config.get("skill") != "project-memory":
+            self.add("error", "config-skill", relative, "skill must equal project-memory")
         if not isinstance(config.get("timezone"), str) or not str(config.get("timezone", "")).strip():
             self.add("error", "config-timezone", relative, "timezone must be a non-empty string")
         if version == "1.0":
             if "namespace" in config:
                 self.add("error", "config-namespace", relative, "namespace is invalid under config 1.0")
             self.namespace = "hub"
-        else:
+        elif version == "1.1":
             if config.get("namespace") != "hub":
                 self.add("error", "config-namespace", relative, 'config 1.1 requires namespace = "hub"')
             else:
@@ -323,14 +324,72 @@ class MemoryValidator:
         if not isinstance(paths, dict):
             self.add("error", "config-paths", relative, "paths must be a table")
             return None
-        unknown_paths = sorted(set(paths) - {"memory"})
+        unknown_paths = sorted(set(paths) - ({"memory", "identity"} if version == "1.2" else {"memory"}))
         if unknown_paths:
             self.add("error", "config-unknown-key", relative, f"unknown paths keys: {', '.join(unknown_paths)}")
+        if version == "1.2":
+            if paths.get("identity") != "PROJECT.md":
+                self.add("error", "config-identity", relative, 'paths.identity must equal PROJECT.md')
+            self._validate_identity(required=True)
+        elif self.identity_raw is not None or (self.owner / "PROJECT.md").exists():
+            self._validate_identity(required=False)
+            if self.namespace != "hub":
+                self.add("error", "identity-conflict", "PROJECT.md", "legacy config requires hub namespace")
         memory = paths.get("memory")
         if not isinstance(memory, str) or not memory.strip():
             self.add("error", "config-memory", relative, "paths.memory must be a non-empty string")
             return None
+        if memory != ".project-memory":
+            self.add("error", "config-memory-location", relative, "paths.memory must equal .project-memory")
         return config
+
+    def _validate_identity(self, *, required: bool) -> None:
+        raw = self.identity_raw
+        if raw is None:
+            self.add("error", "identity-missing", "PROJECT.md", "identity must be a regular non-reparse UTF-8 file")
+            return
+        try:
+            text = raw.decode("utf-8").replace("\r\n", "\n")
+        except UnicodeError:
+            self.add("error", "identity-invalid", "PROJECT.md", "identity must be UTF-8")
+            return
+        match = re.match(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n|$)", text, re.S)
+        if not match:
+            self.add("error", "identity-invalid", "PROJECT.md", "missing flat identity frontmatter")
+            return
+        fields = {}
+        for line in match[1].splitlines():
+            item = re.fullmatch(r"(namespace|name):[ \t]*(.+)", line)
+            if not item or item[1] in fields:
+                self.add("error", "identity-invalid", "PROJECT.md", "identity requires unique namespace and name fields only")
+                return
+            value = item[2].strip()
+            if value.startswith('"'):
+                try:
+                    value = json.loads(value)
+                except ValueError:
+                    value = None
+            elif value.startswith("'") and value.endswith("'"):
+                value = value[1:-1].replace("''", "'")
+            if not isinstance(value, str) or not value.strip() or "\n" in value or "\r" in value:
+                self.add("error", "identity-invalid", "PROJECT.md", "identity scalar must be a nonempty single line")
+                return
+            fields[item[1]] = value
+        if set(fields) != {"namespace", "name"} or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", fields.get("namespace", "")):
+            self.add("error", "identity-invalid", "PROJECT.md", "invalid name or stable namespace")
+            return
+        body = text[match.end():]
+        for title in ("Purpose", "Scope"):
+            matches = list(re.finditer(r"(?m)^## " + title + r"[ \t]*$", body))
+            if len(matches) != 1:
+                self.add("error", "identity-invalid", "PROJECT.md", "identity requires one Purpose and Scope section")
+                return
+            section = body[matches[0].end():]
+            section = re.split(r"(?m)^## ", section, maxsplit=1)[0].strip()
+            if not section or section in {"_None._", "T" + "BD"}:
+                self.add("error", "identity-invalid", "PROJECT.md", "purpose and scope must be nonempty")
+                return
+        self.namespace = fields["namespace"]
 
     def _resolve_memory(self, config: dict[str, object]) -> Path | None:
         paths = config["paths"]
@@ -372,7 +431,7 @@ class MemoryValidator:
             self.add("inconclusive", "list-failed", relative, f"cannot list memory root: {exc}")
             return Snapshot({}, {})
         paths = [root]
-        allowed_files = set(REQUIRED_RECORDS) | {"TASTE.md"}
+        allowed_files = set(REQUIRED_RECORDS) | {"TASTE.md", "project-memory.toml"}
         for item in root_items:
             paths.append(item)
             item_rel = self.rel(item)
@@ -519,7 +578,7 @@ class MemoryValidator:
             )
             if parsed:
                 metadata, body = parsed
-                self._common(taste, metadata, "hub-memory-taste")
+                self._common(taste, metadata, "project-memory-taste")
                 self._read_counters(taste, metadata)
                 sections = self._sections(taste, body, ("Taste",))
                 self._entry_section(taste, "Taste", sections.get("Taste", []), {"TASTE"}, False)
@@ -612,7 +671,7 @@ class MemoryValidator:
         if not parsed:
             return
         metadata, body = parsed
-        self._common(path, metadata, "hub-memory-archive")
+        self._common(path, metadata, "project-memory-archive")
         match = ARCHIVE_NAME_RE.fullmatch(path.name)
         if not match or metadata.get("year") != match.group(1):
             self.add("error", "archive-year", self.rel(path), "archive year must match filename")
@@ -629,7 +688,7 @@ class MemoryValidator:
         if not parsed:
             return
         metadata, body = parsed
-        self._common(path, metadata, "hub-memory-handoff")
+        self._common(path, metadata, "project-memory-handoff")
         relative = self.rel(path)
         if not _timestamp(metadata.get("created", "")):
             self.add("error", "handoff-created", relative, "created must be timezone-aware")
@@ -870,7 +929,7 @@ class MemoryValidator:
                 self.add("error", "active-handoff-retired", self.active_handoff, "active handoff must not be retired")
 
     def _current_inventory(self) -> dict[str, tuple[str, int, str]] | None:
-        paths = [self.config]
+        paths = [self.config, self.owner / "PROJECT.md"]
         if self.memory is not None:
             paths.append(self.memory)
             try:
@@ -966,18 +1025,18 @@ def validate_memory(
         return invocation_result("owner root does not exist", owner_root)
     if not owner.is_dir():
         return invocation_result("owner root must be a directory", owner)
-    expected_parent = owner / ".agents" / "config"
-    expected = expected_parent / "hub-memory.toml"
+    expected_parent = owner / ".project-memory"
+    expected = expected_parent / "project-memory.toml"
     if config_path is None:
         config = expected
     else:
         supplied = config_path if config_path.is_absolute() else Path.cwd() / config_path
         supplied = supplied.absolute()
-        if supplied.name != "hub-memory.toml" or supplied.parent != expected_parent:
-            return invocation_result("explicit config must be named hub-memory.toml directly beneath <owner-root>/.agents/config/", owner)
+        if supplied.name != "project-memory.toml" or supplied.parent != expected_parent:
+            return invocation_result("explicit config must be named project-memory.toml directly beneath <owner-root>/.project-memory/", owner)
         try:
             if supplied.resolve(strict=False).parent != expected_parent.resolve(strict=False):
-                return invocation_result("explicit config escapes <owner-root>/.agents/config/", owner)
+                return invocation_result("explicit config escapes <owner-root>/.project-memory/", owner)
         except (OSError, RuntimeError):
             return invocation_result("explicit config path cannot be resolved", owner)
         config = supplied
@@ -986,19 +1045,19 @@ def validate_memory(
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Read-only structural validation for one configured hub-memory namespace.",
+        description="Read-only structural validation for one configured project-memory namespace.",
         epilog="Exit codes: 0 valid, 1 stable invalid namespace, 2 invocation error, 3 runtime or inconclusive.",
     )
     parser.add_argument(
         "--owner-root",
         required=True,
         type=Path,
-        help="Owner (hub) root containing .agents/config/hub-memory.toml.",
+        help="Owner (hub) root containing .project-memory/project-memory.toml.",
     )
     parser.add_argument(
         "--config",
         type=Path,
-        help="Optional exact <owner-root>/.agents/config/hub-memory.toml path.",
+        help="Optional exact <owner-root>/.project-memory/project-memory.toml path.",
     )
     parser.add_argument(
         "--format",
@@ -1010,7 +1069,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def render_text(payload: dict[str, object]) -> str:
-    lines = [f"{str(payload['status']).upper()} hub-memory", f"owner: {payload['owner_root']}"]
+    lines = [f"{str(payload['status']).upper()} project-memory", f"owner: {payload['owner_root']}"]
     if payload.get("memory_root"):
         lines.append(f"memory: {payload['memory_root']}")
     findings = payload.get("findings", [])

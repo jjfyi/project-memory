@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 102 84" role="img" aria-labelledby="title desc">
+  <title id="title">JJFYI detailed symbol</title>
+  <desc id="desc">Two overlapping note slips forming the JJFYI symbol.</desc>
+  <g transform="translate(3 3)"><rect x="0" y="1.56" width="69.12" height="50.7" rx="3.46" fill="#D79A36" fill-opacity="1" transform="rotate(-4 34.56 26.91)"/><rect x="26.88" y="25.74" width="69.12" height="50.7" rx="3.46" fill="#173D6D" transform="rotate(3 61.44 51.09)"/><g fill="#FFFDF8" transform="translate(57.93 59.34)"><path d="M1.6600000000000001 0.0H3.98V-5.46H8.74V-7.42H3.98V-11.120000000000001H9.56V-13.08H1.6600000000000001Z"/><path d="M15.12 0.0H17.439999999999998V-4.86L21.38 -13.08H18.96L17.54 -9.74C17.16 -8.76 16.759999999999998 -7.86 16.34 -6.86H16.259999999999998C15.84 -7.86 15.48 -8.76 15.1 -9.74L13.68 -13.08H11.2L15.12 -4.86Z"/><path d="M24.159999999999997 0.0H26.479999999999997V-13.08H24.159999999999997Z"/></g></g>
+</svg>

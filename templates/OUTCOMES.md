@@ -1,5 +1,5 @@
 ---
-type: hub-memory-outcomes
+type: project-memory-outcomes
 schema_version: "1.0"
 updated: YYYY-MM-DD
 next_id: 1

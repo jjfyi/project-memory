@@ -1,92 +1,122 @@
-# hub-memory
+# project-memory ![Agent skill: filesystem memory](https://img.shields.io/badge/agent_skill-filesystem_memory-173D6D?labelColor=252422&style=flat-square)
 
-`hub-memory` is a portable Agent Skill for progressive, filesystem-first memory in a knowledge-worker hub.
+<a href="https://jjfyi.substack.com/"><img src="jjfyi-readme-mark.svg" alt="JJFYI" align="right" width="92"></a>
 
-It helps an agent preserve the state needed to continue work, record meaningful outcomes and decisions, learn cautiously from correction evidence, create deliberate high-fidelity handoffs, and periodically reconcile or compact its records.
+**A JJFYI project** JJFYI is where I follow my curiosity, then share what I learn.
+[Visit JJFYI on Substack](https://jjfyi.substack.com/)
 
-## Memory model scope
+<br clear="right">
 
-The version 1 memory model manages one contained, fixed `hub` namespace. It does not provide workstream or project orchestration, task management, daily, weekly, or monthly notes or reporting, migration of an existing memory system, or cross-namespace routing or roll-up.
+---
 
-The package is instruction-first and human-readable. It does not require a database, background service, embeddings, retained chat history, or Git history.
+`project-memory` helps an AI agent remember enough about an independent project to continue useful work in a later chat. It keeps current context concise and preserves meaningful outcomes, decisions, and approved guidance in Markdown files you can inspect and edit.
 
-## Package contents
+The skill is instruction-first. It requires no database, background service, embeddings, Git history, or retained chat transcript. Optional Python helpers validate the package and memory records and safely replace existing records.
 
-- `SKILL.md` — agent entrypoint and operation router.
-- `man.hub-memory.md` — human-facing reference.
-- `references/` — configuration, schema, and operation contracts.
-- `scripts/` — read-only package/live-memory validation and optional safe existing-record replacement.
-- `templates/` — the six required empty memory records.
-- `tests/` — focused standard-library tests and disposable live-memory fixtures.
+## What it remembers
+
+Each project has its own name, namespace, purpose, and scope in root `PROJECT.md`. Its memory and configuration live together under `.project-memory/`:
+
+| File | Purpose |
+|---|---|
+| `project-memory.toml` | Project-local configuration |
+| `CONTEXT.md` | Current stopping point, open threads, and next actions |
+| `DIRECTION.md` | Goals, focuses, and current progress |
+| `OUTCOMES.md` | Meaningful completed results |
+| `DECISIONS.md` | Durable choices and constraints |
+| `GUIDANCE.md` | Explicitly approved reusable guidance |
+| `CANDIDATES.md` | Lessons and correction evidence awaiting review |
+
+Detailed artifacts stay in their own files; memory links to them. Handoff packets and archives appear only when needed.
+
+This is continuation memory, not a chat transcript or activity log. Current context and progress are updated in place. Outcomes and decisions have dated entries, but they do not capture every action. Daily reporting, Obsidian integration, transcript recovery, task management, and coordination across projects are outside this release's scope.
 
 ## Installation
 
-Install or clone this repository root as:
+The repository root is the installable skill root. Copy the complete package, including its references, scripts, templates, and license. Exclude `.git/`, Python caches, and any private project data.
+
+### Codex and local ChatGPT workspaces
+
+For a project-local installation, place the package at:
 
 ```text
-<hub>/.agents/skills/hub-memory/
+<project>/.agents/skills/project-memory/
 ```
 
-Then ask the agent to initialize `hub-memory` for the hub. Initialization creates `.agents/config/hub-memory.toml` and the configured memory namespace only after showing the proposed targets and receiving confirmation.
+Install through your host's supported skill mechanism for a shared user-level installation. Skill location does not determine memory ownership: each explicitly selected project uses its own root `PROJECT.md` and `.project-memory/`.
 
-For a new hub, initialization writes config schema 1.1 with `namespace = "hub"` and defaults memory to `.ai-hub/memory`. This is an initialization default, not the only valid configured value: an existing valid config may continue to use `.memory` or another contained relative path. Version 1 performs no automatic migration.
+### Claude Code
 
-Config schema 1.1 requires hub-memory package 0.4.0 or newer. Existing config schema 1.0 remains fully read/write under 0.4.0 as the implicit `hub` namespace; it is never upgraded automatically. Record, handoff, archive, and template schemas remain 1.0 and do not contain a namespace field. Package and data-schema versions are independent.
-
-An optional manual config upgrade changes only `schema_version` from `"1.0"` to `"1.1"` and adds `namespace = "hub"`. The skill must show and validate that exact edit before applying it. Memory records and paths remain unchanged.
-
-`.ai-hub/` is a shared container for durable, human-readable data owned by future `hub-*` capabilities. `hub-memory` owns only `.ai-hub/memory/`; it does not inspect, validate, reject, create, modify, or govern sibling capability directories merely because they exist. Runtime state, caches, and secrets remain under `.agents/config/state/` and `.agents/config/secrets/`, not `.ai-hub/`.
-
-Do not initialize over an existing or competing memory system. Version 1 intentionally has no migration workflow.
-
-### Recommended automatic resume
-
-For harnesses that support repository instructions, the hub may add this optional line to `AGENTS.md`:
+Use a project-local or personal skill directory:
 
 ```text
-At the start of each new agent session, before substantive work, use hub-memory to resume.
+<project>/.claude/skills/project-memory/
+~/.claude/skills/project-memory/
 ```
 
-This means once per fresh conversation, not once per user turn. It is a recommended adapter, not a portable-skill dependency. `hub-memory` never creates or edits `AGENTS.md` automatically; initialization reports when the line is absent and requires a separate explicit request and approval before changing agent instructions.
+This skill needs persistent access to the selected project folder and a supported way to replace existing files atomically. Uploading it to a host without that filesystem access does not establish support.
 
-Automatic resume degrades gracefully. If memory is missing, invalid, or ambiguous, the memory operation reports once for that session, performs no writes, continues the substantive task, and offers initialization afterward.
+See the current [OpenAI skill documentation](https://learn.chatgpt.com/docs/build-skills) and [Claude Code skill documentation](https://code.claude.com/docs/en/skills) for discovery and installation behavior.
 
-## Save and handoff
+## Start and use
 
-A standalone save reconciles meaningful session state. It absorbs, clears, and retires an active handoff only when bounded evidence establishes that the packet was consumed and every live item is resolved or durably represented; otherwise the unrelated save may proceed while the handoff remains active. Every handoff request, including “save and handoff,” instead uses reconciliation-embedded save: it applies the same classification and adoption guards while preserving the current pointer until durable records, non-pointer context, and the new packet validate.
+In the project folder, ask:
 
-An explicit packet-only handoff skips progressive-record reconciliation except for the required pointer mutation and reports that limitation. Detailed ordering and retry behavior remain normative in [references/handoff.md](references/handoff.md).
+```text
+Initialize project-memory here.
+```
 
-## Status
+The agent asks for missing name, purpose, and scope, proposes a stable namespace and setup, and gets confirmation before creating `PROJECT.md` and `.project-memory/`. It should not guess your project identity from the folder name.
 
-Package version `0.4.0` is under pre-stable contract hardening. It is independent of config and record schema versions. Acceptance is reported separately as structurally valid, behaviorally tested, and live accepted; one level does not imply the next.
+During ordinary work:
 
-## Python support
+| Request | Result |
+|---|---|
+| “Resume” or “reground” | Read project identity and relevant saved context |
+| “Save our progress” | Preserve meaningful results and update continuation state |
+| “Create a handoff” | Prepare detailed context for a future session |
+| “Check memory” | Review consistency without changing meaning |
+| “Review learning candidates” | Review proposed reusable guidance for approval |
 
-The package remains instruction-first. Python is optional and the bundled scripts use only the standard library. `scripts/validate_package.py` and `scripts/replace_record.py` require Python 3.10 or newer. The separate live-memory validator, `scripts/validate_memory.py`, requires Python 3.11 or newer so it can parse configuration with `tomllib`.
+Resume loads identity into conversation context once. Ordinary follow-up questions do not reload memory. A later explicit memory operation rereads identity before relying on it or writing. Saving a particular document or artifact does not implicitly save project memory.
 
-When Python is unavailable, existing records may be replaced only through the normative validated same-directory atomic replacement procedure in [references/schema.md](references/schema.md). If no known atomic primitive is available, stop without writing. A refusal or nonzero result from `scripts/replace_record.py` may not be bypassed manually.
+Automatic startup is optional. A project may explicitly add this instruction to its host's instruction file:
 
-## Structural validation
+```text
+At the start of each new agent session, before substantive work, use project-memory to resume.
+```
 
-Run the bundled read-only validator with Python 3:
+The skill does not add that instruction automatically. Resume is read-only; missing or ambiguous memory is reported without silently initializing it.
+
+## Requirements and verification
+
+The helpers use the Python standard library. Package validation and record replacement require Python 3.10+; live-memory validation requires Python 3.11+ for native TOML parsing. Replace `python` below with your environment's Python executable if needed.
+
+From the skill package folder:
 
 ```text
 python scripts/validate_package.py --root .
-python scripts/validate_package.py --root . --format json
+python -B -m unittest discover -s tests
 ```
 
-The package validator checks the public package structure, skill frontmatter, required references and templates, internal links, template schemas, private-artifact exclusions, and common unfinished scaffolding. It does not prove behavioral correctness.
-
-Package validation reports schema `hub-memory/package-validation@1` and exits 0 for a valid package, 1 for validation errors, or 2 for invalid invocation.
-
-To check one configured live namespace without writing to it, run:
+To validate a separate project's memory without writing:
 
 ```text
-python scripts/validate_memory.py --owner-root <hub-root>
-python scripts/validate_memory.py --owner-root <hub-root> --format json
+python scripts/validate_memory.py --owner-root <project-root> --format json
 ```
 
-An explicit config may be supplied only as `<hub-root>/.agents/config/hub-memory.toml` with `--config`. The validator supports config schema 1.0 as implicit `hub` and config schema 1.1 with `namespace = "hub"`; record, handoff, and archive schema remain 1.0.
+Configuration schema 1.2 references project identity in `PROJECT.md`. Legacy schemas 1.0 and 1.1 retain their fixed `hub` semantics without automatic migration. Record schemas remain 1.0. See [configuration](references/config.md) and the [manual](man.project-memory.md) for detailed contracts, exit codes, and recovery behavior.
 
-Live-memory validation reports schema `hub-memory/memory-validation@1` and exits 0 for valid memory, 1 for a stable invalid namespace, 2 for an invocation error, or 3 when validation is inconclusive. Findings are deterministic and bounded. Public read limits are 5,000 files, 8 MiB per file, and 64 MiB total. It inventories and hashes the config and checked memory files before validation, then rechecks them; concurrent change is inconclusive rather than an invalid-memory finding.
+Without Python, existing records may be updated only through the validated same-directory atomic replacement contract in [references/schema.md](references/schema.md). If the host cannot perform that operation safely, the skill stops without writing.
+
+## Status
+
+Version 0.5.1 is a public preview. Package structure and automated helper tests are checked on Windows; Linux and macOS execution and independent fresh-session behavioral acceptance remain pending. Successful script tests do not establish that every agent follows the instructions correctly.
+
+Keep generated project memory separate from the public skill package. It may contain private project information; choose deliberately whether to version or synchronize it.
+
+## License
+
+The skill source, scripts, templates, and documentation are licensed under the [MIT License](LICENSE).
+
+The JJFYI name and brand assets are excluded from the MIT License. All rights are reserved for those materials.

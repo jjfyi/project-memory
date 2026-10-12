@@ -21,7 +21,7 @@ Remember a failed automatic probe only in the current conversation so later turn
 ## Procedure
 
 1. Read [config.md](config.md) and [schema.md](schema.md), then perform the shared config, containment, and schema preflight.
-2. Read `CONTEXT.md` and `DIRECTION.md`.
+2. Read PROJECT.md through [identity.md](identity.md) and keep its validated identity in conversation context. Ordinary follow-up asks do not reload it or invoke memory. A later explicit operation rereads it; switching project roots loads the selected project identity. Then read `CONTEXT.md` and `DIRECTION.md`.
 3. Load all active approved guidance and evaluate each entry's scope, trigger, and exceptions against the current work.
 4. Read decision headings and `Applies to` fields; load a decision body only when its scope matches.
 5. Load taste only when the active state references it or its scope matches the work.

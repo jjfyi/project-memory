@@ -25,7 +25,7 @@ from memory_fixtures import (
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = PACKAGE_ROOT / "scripts" / "validate_memory.py"
-SPEC = importlib.util.spec_from_file_location("hub_memory_validate_memory", SCRIPT)
+SPEC = importlib.util.spec_from_file_location("project_memory_validate_memory", SCRIPT)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError("cannot load live-memory validator")
 validate_memory = importlib.util.module_from_spec(SPEC)
@@ -58,20 +58,77 @@ class ValidateMemoryTests(unittest.TestCase):
             check=False,
         )
 
+    def project_identity(self, namespace="sample-project"):
+        config = self.owner / ".project-memory/project-memory.toml"
+        config.write_text('schema_version = "1.2"\nskill = "project-memory"\ntimezone = "America/Los_Angeles"\n[paths]\nmemory = ".project-memory"\nidentity = "PROJECT.md"\n', encoding="utf-8")
+        identity = self.owner / "PROJECT.md"
+        identity.write_text(f"---\nnamespace: {namespace}\nname: Sample Project\n---\n\n# Project\n\n## Purpose\nBuild a useful deliverable.\n\n## Scope\nResearch and delivery.\n", encoding="utf-8")
+        return identity
+
+    def test_project_identity_12_valid(self):
+        self.project_identity()
+        result = self.validate()
+        self.assertEqual(0, result.exit_code, result.payload)
+        self.assertEqual("sample-project", result.payload["namespace"])
+
+    def test_project_identity_missing(self):
+        self.project_identity().unlink()
+        self.assertIn("identity-missing", self.codes(self.validate()))
+
+    def test_project_identity_invalid_namespace(self):
+        self.project_identity("Bad Namespace")
+        self.assertIn("identity-invalid", self.codes(self.validate()))
+
+    def test_project_identity_empty_scope(self):
+        path = self.project_identity()
+        path.write_text(path.read_text().replace("Research and delivery.", ""), encoding="utf-8")
+        self.assertIn("identity-invalid", self.codes(self.validate()))
+
+    def test_project_identity_duplicate_field(self):
+        path = self.project_identity()
+        path.write_text(path.read_text().replace("name: Sample Project", "name: Sample Project\nname: Other"), encoding="utf-8")
+        self.assertIn("identity-invalid", self.codes(self.validate()))
+
+    def test_project_identity_rejects_config_namespace(self):
+        self.project_identity()
+        path = self.owner / ".project-memory/project-memory.toml"
+        path.write_text(path.read_text().replace('[paths]', 'namespace = "sample-project"\n[paths]'), encoding="utf-8")
+        self.assertIn("config-unknown-key", self.codes(self.validate()))
+
+    def test_project_identity_concurrent_change(self):
+        path = self.project_identity()
+        result = self.validate(before_recheck=lambda: path.write_text(path.read_text().replace("Sample Project", "Changed Project"), encoding="utf-8"))
+        self.assertEqual(validate_memory.EXIT_INCONCLUSIVE, result.exit_code)
+
+    def test_project_identity_legacy_conflict(self):
+        path = self.project_identity()
+        write_config(self.owner, config_version="1.1", memory_path=".project-memory", namespace="hub")
+        self.assertIn("identity-conflict", self.codes(self.validate()))
+
+    def test_project_identity_symlink_refused(self):
+        path = self.project_identity()
+        target = self.owner / "identity-copy.md"
+        path.rename(target)
+        try:
+            path.symlink_to(target)
+        except OSError:
+            self.skipTest("symlink unavailable")
+        self.assertIn("identity-missing", self.codes(self.validate()))
+
     def test_valid_fresh_config_11_text_and_json(self) -> None:
         result = self.validate()
         self.assertEqual(validate_memory.EXIT_VALID, result.exit_code)
-        self.assertEqual("hub-memory/memory-validation@1", result.payload["schema"])
+        self.assertEqual("project-memory/memory-validation@1", result.payload["schema"])
         self.assertEqual("hub", result.payload["namespace"])
 
         text = self.cli("--owner-root", str(self.owner))
         self.assertEqual(0, text.returncode)
-        self.assertIn("VALID hub-memory", text.stdout)
+        self.assertIn("VALID project-memory", text.stdout)
 
         structured = self.cli("--owner-root", str(self.owner), "--format", "json")
         self.assertEqual(0, structured.returncode)
         payload = json.loads(structured.stdout)
-        self.assertEqual("hub-memory/memory-validation@1", payload["schema"])
+        self.assertEqual("project-memory/memory-validation@1", payload["schema"])
         self.assertEqual("valid", payload["status"])
 
     def test_help_and_invocation_exit_2(self) -> None:
@@ -94,14 +151,14 @@ class ValidateMemoryTests(unittest.TestCase):
         write_config(
             self.owner,
             config_version="1.0",
-            memory_path=".ai-hub/memory",
+            memory_path=".project-memory",
             namespace=None,
         )
         result = self.validate()
         self.assertEqual(0, result.exit_code)
         self.assertEqual("hub", result.payload["namespace"])
 
-    def test_valid_config_11_with_legacy_memory_path(self) -> None:
+    def test_legacy_memory_location_requires_migration(self) -> None:
         legacy_owner, _ = make_hub(
             self.base / "legacy-path",
             config_version="1.1",
@@ -109,17 +166,17 @@ class ValidateMemoryTests(unittest.TestCase):
             namespace="hub",
         )
         result = validate_memory.validate_memory(legacy_owner)
-        self.assertEqual(0, result.exit_code)
+        self.assertIn("config-memory-location", self.codes(result))
 
     def test_valid_optional_resources_under_legacy_config(self) -> None:
         write_config(
             self.owner,
             config_version="1.0",
-            memory_path=".ai-hub/memory",
+            memory_path=".project-memory",
             namespace=None,
         )
         (self.memory / "TASTE.md").write_text(
-            "---\ntype: hub-memory-taste\nschema_version: \"1.0\"\n"
+            "---\ntype: project-memory-taste\nschema_version: \"1.0\"\n"
             "updated: 2026-08-31\nnext_id: 1\n---\n\n# Taste\n\n## Taste\n\n_None._\n",
             encoding="utf-8",
             newline="",
@@ -137,7 +194,7 @@ class ValidateMemoryTests(unittest.TestCase):
         self.assertEqual(0, self.validate().exit_code)
 
     def test_malformed_toml_and_unknown_config_keys_are_invalid(self) -> None:
-        config = self.owner / ".agents" / "config" / "hub-memory.toml"
+        config = self.owner / ".project-memory" / "project-memory.toml"
         config.write_text("not = [valid\n", encoding="utf-8")
         result = self.validate()
         self.assertEqual(1, result.exit_code)
@@ -146,7 +203,7 @@ class ValidateMemoryTests(unittest.TestCase):
         write_config(
             self.owner,
             config_version="1.1",
-            memory_path=".ai-hub/memory",
+            memory_path=".project-memory",
             namespace="hub",
             extra="unexpected = true",
         )
@@ -165,7 +222,7 @@ class ValidateMemoryTests(unittest.TestCase):
                 write_config(
                     self.owner,
                     config_version=version,
-                    memory_path=".ai-hub/memory",
+                    memory_path=".project-memory",
                     namespace=namespace,
                 )
                 result = self.validate()
@@ -214,7 +271,7 @@ class ValidateMemoryTests(unittest.TestCase):
         decisions = self.memory / "DECISIONS.md"
         decisions.write_text(
             decisions.read_text(encoding="utf-8").replace(
-                "type: hub-memory-decisions", "type: hub-memory-outcomes"
+                "type: project-memory-decisions", "type: project-memory-outcomes"
             ),
             encoding="utf-8",
             newline="",
@@ -499,14 +556,14 @@ class ValidateMemoryTests(unittest.TestCase):
         (archive / "2025.md").write_text(
             archive_text(year="2024"), encoding="utf-8", newline=""
         )
-        (self.memory / ".CONTEXT.md.hub-memory-replace-0123456789abcdef0123456789abcdef.tmp").write_bytes(b"pending")
+        (self.memory / ".CONTEXT.md.project-memory-replace-0123456789abcdef0123456789abcdef.tmp").write_bytes(b"pending")
         result = self.validate()
         self.assertEqual(1, result.exit_code)
         self.assertIn("archive-year", self.codes(result))
         self.assertIn("replacement-remnant", self.codes(result))
 
     def test_sibling_capability_directory_is_ignored(self) -> None:
-        sibling = self.owner / ".ai-hub" / "another-capability"
+        sibling = self.owner / "another-capability"
         sibling.mkdir()
         (sibling / "data.txt").write_text("opaque", encoding="utf-8")
         self.assertEqual(0, self.validate().exit_code)

@@ -1,5 +1,5 @@
 ---
-type: hub-memory-direction
+type: project-memory-direction
 schema_version: "1.0"
 updated: YYYY-MM-DD
 next_goal_id: 1

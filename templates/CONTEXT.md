@@ -1,5 +1,5 @@
 ---
-type: hub-memory-context
+type: project-memory-context
 schema_version: "1.0"
 updated: YYYY-MM-DD
 ---

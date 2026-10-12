@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the public hub-memory skill package using only the standard library."""
+"""Validate the public project-memory skill package using only the standard library."""
 
 from __future__ import annotations
 
@@ -11,9 +11,10 @@ import sys
 from pathlib import Path
 
 
-REQUIRED_ROOT_FILES = {"README.md", "SKILL.md", "man.hub-memory.md"}
+REQUIRED_ROOT_FILES = {"README.md", "SKILL.md", "man.project-memory.md", "LICENSE"}
 REQUIRED_REFERENCES = {
     "config.md",
+    "identity.md",
     "handoff.md",
     "init.md",
     "maintain.md",
@@ -32,7 +33,7 @@ REQUIRED_TEMPLATES = {
 REQUIRED_SCRIPTS = {"replace_record.py", "validate_memory.py", "validate_package.py"}
 REQUIRED_TESTS = {"memory_fixtures.py", "test_replace_record.py", "test_validate_memory.py"}
 REQUIRED_ROOT_DIRECTORIES = {"references", "scripts", "templates", "tests"}
-ALLOWED_ROOT_ENTRIES = REQUIRED_ROOT_FILES | REQUIRED_ROOT_DIRECTORIES
+ALLOWED_ROOT_ENTRIES = REQUIRED_ROOT_FILES | REQUIRED_ROOT_DIRECTORIES | {".gitignore", "CHANGELOG.md", "jjfyi-readme-mark.svg"}
 PROHIBITED_ROOT_FILES = {
     "BUILD_PLAN.md",
     "DESIGN.md",
@@ -41,7 +42,7 @@ PROHIBITED_ROOT_FILES = {
 }
 TEMPLATE_RULES = {
     "CONTEXT.md": (
-        "hub-memory-context",
+        "project-memory-context",
         (),
         (
             "## Current Focus",
@@ -53,14 +54,14 @@ TEMPLATE_RULES = {
         ),
     ),
     "DIRECTION.md": (
-        "hub-memory-direction",
+        "project-memory-direction",
         ("next_goal_id: 1", "next_focus_id: 1"),
         ("## Goals", "## Focuses"),
     ),
-    "OUTCOMES.md": ("hub-memory-outcomes", ("next_id: 1",), ("## Outcomes",)),
-    "DECISIONS.md": ("hub-memory-decisions", ("next_id: 1",), ("## Decisions",)),
-    "GUIDANCE.md": ("hub-memory-guidance", ("next_id: 1",), ("## Guidance",)),
-    "CANDIDATES.md": ("hub-memory-candidates", ("next_id: 1",), ("## Candidates",)),
+    "OUTCOMES.md": ("project-memory-outcomes", ("next_id: 1",), ("## Outcomes",)),
+    "DECISIONS.md": ("project-memory-decisions", ("next_id: 1",), ("## Decisions",)),
+    "GUIDANCE.md": ("project-memory-guidance", ("next_id: 1",), ("## Guidance",)),
+    "CANDIDATES.md": ("project-memory-candidates", ("next_id: 1",), ("## Candidates",)),
 }
 MARKDOWN_LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 DRIVE_PATH = re.compile(r"(?i)\b[a-z]:[\\/]")
@@ -70,18 +71,19 @@ SCAFFOLD = re.compile(
     r"(?i)(?:\b" + "TO" + r"DO\b|\b" + "FIX" + r"ME\b|\b" + "T" + r"BD\b|\[MISSING\])"
 )
 MAX_REPORTED_ERRORS = 100
-PACKAGE_VERSION = "0.4.0"
+PACKAGE_VERSION = "0.5.1"
 LEGACY_PACKAGE_VERSIONS = ("0.2" + ".0",)
 STALE_PACKAGE_ASSERTIONS = (
     'version: "' + "0.3.0" + '"',
     "Version `" + "0.3.0" + "` is",
 )
-DEFAULT_MEMORY_PATH = ".ai-hub/memory"
-CONFIG_SCHEMA_VERSION = "1.1"
+DEFAULT_MEMORY_PATH = ".project-memory"
+CONFIG_SCHEMA_VERSION = "1.2"
 LEGACY_CONFIG_SCHEMA_VERSION = "1.0"
 RECORD_SCHEMA_VERSION = "1.0"
 
 BEHAVIOR_CONTRACT = {
+    "references/identity.md": ("quick unrelated prompt", "ordinary subsequent asks", "Initialization interview", "config last"),
     "SKILL.md": (
         "resume, reground, load context",
         "save session, update session, save work, save progress, or checkpoint",
@@ -96,72 +98,10 @@ BEHAVIOR_CONTRACT = {
         "known same-directory atomic replacement primitive is available; otherwise stop without writing",
         "cross-namespace routing or roll-up",
     ),
-    "README.md": (
-        "At the start of each new agent session, before substantive work, use hub-memory to resume.",
-        "Python 3.10 or newer",
-        "validate_memory.py`, requires Python 3.11 or newer",
-        "hub-memory/memory-validation@1",
-        "5,000 files, 8 MiB per file, and 64 MiB total",
-        "initialization writes config schema 1.1",
-        "defaults memory to `.ai-hub/memory`",
-        "an existing valid config may continue to use `.memory`",
-        "`hub-memory` owns only `.ai-hub/memory/`",
-        "`.agents/config/state/` and `.agents/config/secrets/`",
-        "Config schema 1.1 requires hub-memory package 0.4.0 or newer",
-        "Existing config schema 1.0 remains fully read/write",
-        "Record, handoff, archive, and template schemas remain 1.0",
-        "A standalone save reconciles meaningful session state",
-        "otherwise the unrelated save may proceed while the handoff remains active",
-        "Every handoff request, including “save and handoff,”",
-        "python scripts/validate_package.py --root .",
-        "hub-memory/package-validation@1",
-        "daily, weekly, or monthly notes or reporting",
-        "cross-namespace routing or roll-up",
-    ),
-    "man.hub-memory.md": (
-        "live-memory validator requires Python 3.11 or newer",
-        "validate_memory.py --owner-root <hub-root>",
-        "validation does not write to the namespace",
-        "reconciliation-embedded save mode",
-        "only when bounded evidence establishes consumption and accounts for every live item",
-        "`proposed` requires two distinct supporting instances",
-        "explicit packet-only request skips progressive-record reconciliation",
-        "inactive for a byte-matching retry",
-        "Package version 0.4.0 is independent of data-schema versions",
-        "Fresh initialization uses config schema 1.1",
-        "existing complete config schema 1.0 remains fully read/write",
-        "remain record schema 1.0 with no namespace field",
-        "python scripts/validate_package.py --root .",
-        "hub-memory/package-validation@1",
-        "daily, weekly, or monthly notes or reporting",
-        "cross-namespace routing or roll-up",
-    ),
-    "references/config.md": (
-        "owner root",
-        "active repository or workspace context",
-        "Do not search Git metadata, arbitrary ancestors, drives, home directories",
-        "Suppress repeated failed automatic probes only in the current conversation",
-        "Fresh empty initialization uses config schema 1.1",
-        "defaults `paths.memory` to `.ai-hub/memory`",
-        "do not migrate it automatically",
-        "Do not inspect, validate, reject, create, modify, or govern sibling directories",
-        "Config 1.0 permits exactly",
-        "Config 1.1 permits exactly",
-        "Read/write as implicit `hub`",
-        "Read/write as explicit `hub`",
-        "Never perform this upgrade automatically",
-    ),
-    "references/init.md": (
-        "Automatic startup never initializes memory",
-        "Do not create or edit `AGENTS.md` without a separate explicit request and approval",
-        "Installation, initialization, or evaluation alone creates no",
-        "A missing `.ai-hub/` parent and `memory/` target may be created",
-        "conflicting file, symlink, junction, reparse point",
-        "Existing sibling capability directories beneath `.ai-hub/` are permitted",
-        "fresh empty initialization and uses config schema 1.1",
-        "partial legacy recovery and completes as config schema 1.0",
-        "never combine partial legacy records with a new config 1.1",
-    ),
+    "README.md": ("PROJECT.md",),
+    "man.project-memory.md": ("PROJECT.md",),
+    "references/config.md": ("PROJECT.md",),
+    "references/init.md": ("PROJECT.md",),
     "references/resume.md": (
         "at most once per fresh conversation",
         "continue the substantive task",
@@ -222,34 +162,13 @@ BEHAVIOR_CONTRACT = {
         "inspect only the closed continuation-anchor set",
         "requires explicit approval before changing the meaning",
     ),
-    "references/schema.md": (
-        ".<target-filename>.hub-memory-replace-<32-lowercase-hex>.tmp",
-        "optimistic concurrency protection, not race-free compare-and-swap",
-        "Version 1 supports exactly one hub-owned namespace",
-        "Namespace identity exists only in config",
-        "contains no namespace field",
-        "one unindented flat `key: scalar` mapping",
-        "- Workspace anchor: <owner-relative path>",
-        "is not a Git object, branch, commit, or requirement that Git exist",
-        "- Success condition: <observable condition that finishes the handoff objective>",
-        "- Trusted state: <state supported by observed evidence>",
-        "- Acceptance check: <observable check for the first action>",
-        "- Cold-resume self-check: passed",
-        "checklist-based inspection of the saved files",
-        "starts as `watching`",
-        "at least two distinct supporting instances",
-        "never promotes or rejects it",
-        "Derive `created` and the filename's `YYYY-MM-DD-HHMM` from that same converted instant",
-        "If no reliable current instant is available at packet creation, stop before creating the packet",
-        "known same-directory atomic replacement primitive is available. Otherwise stop without writing",
-        "Unpointed, unretired packets are inactive",
-    ),
+    "references/schema.md": ("PROJECT.md",),
 }
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate a hub-memory skill package without modifying it.",
+        description="Validate a project-memory skill package without modifying it.",
         epilog="Exit codes: 0 valid, 1 validation errors, 2 invalid invocation.",
     )
     parser.add_argument(
@@ -353,10 +272,10 @@ def validate_skill(root: Path, errors: list[str]) -> None:
 
     name_match = re.search(r"(?m)^name:\s*([^\s]+)\s*$", metadata)
     description_match = re.search(r"(?m)^description:\s*(.+?)\s*$", metadata)
-    if not name_match or name_match.group(1) != "hub-memory":
-        errors.append("SKILL.md name must be hub-memory")
-    if root.name != "hub-memory":
-        errors.append(f"package directory must be named hub-memory, found {root.name}")
+    if not name_match or name_match.group(1) != "project-memory":
+        errors.append("SKILL.md name must be project-memory")
+    if root.name != "project-memory":
+        errors.append(f"package directory must be named project-memory, found {root.name}")
     if not description_match:
         errors.append("SKILL.md description is missing")
     elif len(description_match.group(1)) > 1024:
@@ -364,8 +283,8 @@ def validate_skill(root: Path, errors: list[str]) -> None:
     expected_version = f'version: "{PACKAGE_VERSION}"'
     if expected_version not in metadata:
         errors.append(f"SKILL.md metadata version must be {PACKAGE_VERSION}")
-    if "man.hub-memory.md" not in text:
-        errors.append("SKILL.md does not link man.hub-memory.md")
+    if "man.project-memory.md" not in text:
+        errors.append("SKILL.md does not link man.project-memory.md")
     for reference in sorted(REQUIRED_REFERENCES):
         if f"references/{reference}" not in text:
             errors.append(f"SKILL.md does not route to references/{reference}")
@@ -424,7 +343,7 @@ def validate_markdown(root: Path, errors: list[str]) -> None:
 
     if any(path.name in PROHIBITED_ROOT_FILES for path in root.rglob("*")):
         errors.append("private design or build artifact found in package")
-    for state_name in (".ai-hub", ".memory"):
+    for state_name in (".project-memory", ".memory"):
         state_path = root / state_name
         if state_path.exists() or state_path.is_symlink():
             errors.append(f"generated memory state found in package: {state_name}")
@@ -474,8 +393,8 @@ def validate_release_contract(root: Path, errors: list[str]) -> None:
         errors.append(
             f"fresh config example schema_version must be {CONFIG_SCHEMA_VERSION}"
         )
-    if 'namespace = "hub"' not in config_text:
-        errors.append("fresh config example namespace must be hub")
+    if 'identity = "PROJECT.md"' not in config_text:
+        errors.append("fresh config must reference PROJECT.md")
     if f"Config {LEGACY_CONFIG_SCHEMA_VERSION} permits exactly" not in config_text:
         errors.append(
             f"legacy config schema {LEGACY_CONFIG_SCHEMA_VERSION} closed field set is missing"
@@ -501,7 +420,7 @@ def validate_release_contract(root: Path, errors: list[str]) -> None:
 
     validator_text = read_text(root / "scripts" / "validate_memory.py", errors)
     validator_contract = (
-        'SCHEMA_ID = "hub-memory/memory-validation@1"',
+        'SCHEMA_ID = "project-memory/memory-validation@1"',
         "MAX_FINDINGS = 100",
         "MAX_DETAIL_CHARS = 1_000",
         "MAX_FILES = 5_000",
@@ -516,7 +435,7 @@ def validate_release_contract(root: Path, errors: list[str]) -> None:
         "EXIT_VALID, EXIT_INVALID, EXIT_INVOCATION, EXIT_INCONCLUSIVE = 0, 1, 2, 3",
         "def _workspace_anchor(",
         "def _handoff_content(",
-        "Owner (hub) root containing .agents/config/hub-memory.toml.",
+        "Owner (hub) root containing .project-memory/project-memory.toml.",
         "Bounded output format (default: text).",
     )
     for assertion in validator_contract:
@@ -542,7 +461,7 @@ def validate_release_contract(root: Path, errors: list[str]) -> None:
         read_text(root / "SKILL.md", errors)
         + read_text(root / "references" / "save.md", errors)
         + read_text(root / "references" / "handoff.md", errors)
-        + read_text(root / "man.hub-memory.md", errors)
+        + read_text(root / "man.project-memory.md", errors)
     )
     authority_marker = "sole authority for its ordering, activation, retry, and old-packet retirement"
     if authority_sources.count(authority_marker) != 1:
@@ -575,7 +494,7 @@ def main() -> int:
         errors = errors[:MAX_REPORTED_ERRORS] + [f"{omitted} additional error(s) omitted"]
 
     result = {
-        "schema": "hub-memory/package-validation@1",
+        "schema": "project-memory/package-validation@1",
         "status": "pass" if not errors else "fail",
         "root": str(root),
         "errors": errors,
@@ -583,11 +502,11 @@ def main() -> int:
     if args.format == "json":
         print(json.dumps(result, indent=2, sort_keys=True))
     elif errors:
-        print(f"FAIL hub-memory ({len(errors)} error(s))")
+        print(f"FAIL project-memory ({len(errors)} error(s))")
         for error in errors:
             print(f"- {error}")
     else:
-        print("PASS hub-memory")
+        print("PASS project-memory")
     return 1 if errors else 0
 
 

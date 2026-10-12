@@ -1,5 +1,5 @@
 ---
-type: hub-memory-candidates
+type: project-memory-candidates
 schema_version: "1.0"
 updated: YYYY-MM-DD
 next_id: 1

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Safely replace one existing hub-memory record using only the standard library."""
+"""Safely replace one existing project-memory record using only the standard library."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ EXIT_IO_ERROR = 6
 MAX_REPLACE_ATTEMPTS = 3
 RETRY_DELAYS_SECONDS = (0.02, 0.05)
 RETRY_CEILING_SECONDS = 0.25
-RESULT_SCHEMA = "hub-memory/replace-record@1"
+RESULT_SCHEMA = "project-memory/replace-record@1"
 
 
 class RefusedError(Exception):
@@ -189,7 +189,7 @@ def _target_label(paths: ValidatedPaths) -> str:
 def _make_temp(paths: ValidatedPaths, proposed_bytes: bytes, mode: int) -> Path:
     for _ in range(8):
         temp = paths.target.parent / (
-            f".{paths.target.name}.hub-memory-replace-{uuid.uuid4().hex}.tmp"
+            f".{paths.target.name}.project-memory-replace-{uuid.uuid4().hex}.tmp"
         )
         try:
             with temp.open("xb") as handle:
@@ -354,7 +354,7 @@ def replace_record(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Atomically replace one existing hub-memory Markdown record.",
+        description="Atomically replace one existing project-memory Markdown record.",
         epilog=(
             "Exit codes: 0 replaced/dry-run, 2 invalid invocation, 3 refused, "
             "4 stale, 5 locked, 6 I/O error. Output is one bounded JSON object."
